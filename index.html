@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Nutrition Agent</title>
+<style>
+  :root {
+    --green: #2D6A4F;
+    --green-light: #D8F3DC;
+    --green-mid: #74C69D;
+    --green-dark: #1B4332;
+    --amber: #E9A14A;
+    --amber-light: #FFF3CD;
+    --surface: #FAFAF8;
+    --card: #FFFFFF;
+    --border: #E8E4DD;
+    --text: #1A1A18;
+    --text-2: #5A5A55;
+    --text-3: #9A9A93;
+    --radius: 14px;
+    --radius-sm: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono: 'SF Mono', 'Fira Code', monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --surface: #0F1410;
+      --card: #1A1F1B;
+      --border: #2A302B;
+      --text: #EDEEE8;
+      --text-2: #9AA09B;
+      --text-3: #5A605B;
+      --green-light: #1A2E22;
+      --amber-light: #2A2010;
+      --shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: var(--surface); color: var(--text); font-family: var(--font); font-size: 16px; line-height: 1.5; }
+
+  /* Layout */
+  #root { display: flex; flex-direction: column; height: 100%; max-width: 520px; margin: 0 auto; }
+  header { padding: 16px 20px 12px; border-bottom: 1px solid var(--border); background: var(--card); position: sticky; top: 0; z-index: 10; }
+  .header-top { display: flex; align-items: center; justify-content: space-between; }
+  .app-title { font-size: 17px; font-weight: 600; color: var(--green-dark); letter-spacing: -0.3px; }
+  .app-title span { color: var(--green); }
+  .week-pill { font-size: 11px; font-weight: 600; background: var(--green-light); color: var(--green-dark); padding: 3px 10px; border-radius: 99px; letter-spacing: 0.02em; }
+  nav { display: flex; gap: 0; margin-top: 12px; background: var(--surface); border-radius: var(--radius-sm); padding: 3px; }
+  nav button { flex: 1; font-size: 13px; font-weight: 500; padding: 7px 4px; border: none; background: none; color: var(--text-2); border-radius: 6px; cursor: pointer; transition: all 0.15s; }
+  nav button.active { background: var(--card); color: var(--text); box-shadow: var(--shadow); }
+
+  /* Scroll area */
+  main { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .tab-panel { padding: 16px 16px 32px; display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Cards */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow); }
+  .card-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3); margin-bottom: 12px; }
+  
+  /* Metrics row */
+  .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .metric { background: var(--surface); border-radius: var(--radius-sm); padding: 12px; }
+  .metric-label { font-size: 11px; color: var(--text-3); margin-bottom: 2px; }
+  .metric-val { font-size: 22px; font-weight: 600; color: var(--text); letter-spacing: -0.5px; }
+  .metric-val small { font-size: 13px; font-weight: 400; color: var(--text-3); }
+
+  /* Progress */
+  .progress-wrap { margin-top: 10px; }
+  .progress-meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-3); margin-bottom: 5px; }
+  .progress-track { background: var(--surface); border-radius: 99px; height: 5px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--green), var(--green-mid)); border-radius: 99px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
+
+  /* Forms */
+  .field { margin-bottom: 12px; }
+  .field label { font-size: 13px; font-weight: 500; color: var(--text-2); display: block; margin-bottom: 5px; }
+  .field input, .field select, .field textarea {
+    width: 100%; font-size: 15px; font-family: var(--font);
+    padding: 10px 12px; border: 1px solid var(--border);
+    border-radius: var(--radius-sm); background: var(--surface);
+    color: var(--text); appearance: none; -webkit-appearance: none;
+    transition: border 0.15s;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    outline: none; border-color: var(--green); box-shadow: 0 0 0 3px rgba(45,106,79,0.1);
+  }
+  .field textarea { min-height: 80px; resize: vertical; line-height: 1.5; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .field-row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+
+  /* Buttons */
+  .btn-primary {
+    width: 100%; padding: 14px; font-size: 15px; font-weight: 600;
+    background: var(--green); color: #fff; border: none;
+    border-radius: var(--radius-sm); cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    letter-spacing: -0.1px;
+  }
+  .btn-primary:active { background: var(--green-dark); transform: scale(0.99); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-secondary {
+    width: 100%; padding: 12px; font-size: 14px; font-weight: 500;
+    background: var(--surface); color: var(--text); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s;
+  }
+  .btn-secondary:active { background: var(--border); }
+
+  /* Chat */
+  #chat-messages { display: flex; flex-direction: column; gap: 14px; padding: 16px; padding-bottom: 8px; }
+  .msg-user { align-self: flex-end; background: var(--green); color: #fff; padding: 10px 14px; border-radius: 18px 18px 4px 18px; max-width: 82%; font-size: 14px; line-height: 1.55; }
+  .msg-agent { align-self: flex-start; max-width: 92%; }
+  .msg-agent-bubble { background: var(--card); border: 1px solid var(--border); padding: 12px 14px; border-radius: 18px 18px 18px 4px; font-size: 14px; line-height: 1.65; color: var(--text); white-space: pre-wrap; word-break: break-word; }
+  .msg-source { font-size: 11px; color: var(--text-3); margin-top: 4px; padding-left: 4px; }
+  .typing { display: flex; gap: 4px; align-items: center; padding: 14px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-3); animation: bounce 1.2s infinite; }
+  .dot:nth-child(2) { animation-delay: 0.2s; }
+  .dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-5px)} }
+
+  /* Chat input bar */
+  .chat-input-bar { position: sticky; bottom: 0; background: var(--card); border-top: 1px solid var(--border); padding: 10px 12px; padding-bottom: max(10px, env(safe-area-inset-bottom)); display: flex; gap: 8px; align-items: flex-end; }
+  .chat-input-bar textarea { flex: 1; font-size: 15px; font-family: var(--font); padding: 9px 12px; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); color: var(--text); resize: none; min-height: 38px; max-height: 120px; line-height: 1.4; transition: border 0.15s; }
+  .chat-input-bar textarea:focus { outline: none; border-color: var(--green); }
+  .send-btn { width: 38px; height: 38px; border-radius: 50%; background: var(--green); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.15s; }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .send-btn svg { fill: #fff; }
+
+  /* History entries */
+  .history-entry { border-bottom: 1px solid var(--border); padding: 12px 0; }
+  .history-entry:last-child { border: none; }
+  .history-week { font-size: 12px; font-weight: 600; color: var(--green); margin-bottom: 3px; }
+  .history-stats { font-size: 13px; color: var(--text-2); line-height: 1.6; }
+
+  /* Tag */
+  .tag { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 99px; margin: 2px 2px 2px 0; }
+  .tag-green { background: var(--green-light); color: var(--green-dark); }
+  .tag-amber { background: var(--amber-light); color: #7A4A00; }
+
+  /* Setup screen */
+  .setup-hero { text-align: center; padding: 32px 16px 24px; }
+  .setup-icon { font-size: 48px; margin-bottom: 12px; }
+  .setup-hero h2 { font-size: 22px; font-weight: 700; color: var(--green-dark); letter-spacing: -0.5px; margin-bottom: 8px; }
+  .setup-hero p { font-size: 14px; color: var(--text-2); line-height: 1.6; }
+
+  /* API key screen */
+  .apikey-note { font-size: 13px; color: var(--text-2); line-height: 1.65; margin-bottom: 16px; background: var(--green-light); padding: 12px; border-radius: var(--radius-sm); }
+  .apikey-note a { color: var(--green-dark); }
+  .small-link { font-size: 12px; color: var(--text-3); text-align: center; margin-top: 8px; }
+  .small-link a { color: var(--green); text-decoration: none; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+<div id="root">
+  <header>
+    <div class="header-top">
+      <div class="app-title">Nutrition<span>Agent</span></div>
+      <div class="week-pill" id="week-pill">Week 1</div>
+    </div>
+    <nav>
+      <button class="active" onclick="showTab('chat')">Check-in</button>
+      <button onclick="showTab('profile')">Profile</button>
+      <button onclick="showTab('history')">History</button>
+      <button onclick="showTab('settings')">Settings</button>
+    </nav>
+  </header>
+
+  <main id="main">
+
+    <!-- CHECK-IN / CHAT TAB -->
+    <div class="tab-panel active" id="tab-chat">
+      <div id="chat-messages">
+        <div class="msg-agent">
+          <div class="msg-agent-bubble">Hi! I'm your personal nutrition agent — grounded in peer-reviewed research, not guesswork.
+
+Fill in your weekly check-in below and I'll give you a tailored fat loss plan for the week ahead. Or just ask me anything.</div>
+        </div>
+      </div>
+
+      <!-- weekly check-in form -->
+      <div class="card" id="checkin-card" style="margin:0 16px 8px">
+        <div class="card-label">This week's check-in</div>
+        <div class="field-row3">
+          <div class="field"><label>Weight (kg)</label><input type="number" id="ci-weight" placeholder="82.0" step="0.1" /></div>
+          <div class="field"><label>Avg kcal/day</label><input type="number" id="ci-cals" placeholder="1800" /></div>
+          <div class="field"><label>Protein (g/d)</label><input type="number" id="ci-protein" placeholder="130" /></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Exercise sessions</label><input type="number" id="ci-ex" placeholder="3" min="0" max="21" /></div>
+          <div class="field"><label>Adherence</label>
+            <select id="ci-adherence">
+              <option value="">Select…</option>
+              <option value="excellent (>90%)">Excellent &gt;90%</option>
+              <option value="good (70–90%)">Good 70–90%</option>
+              <option value="moderate (50–70%)">Moderate 50–70%</option>
+              <option value="poor (<50%)">Poor &lt;50%</option>
+            </select>
+          </div>
+        </div>
+        <div class="field"><label>Notes — hunger, energy, cravings, challenges</label>
+          <textarea id="ci-notes" placeholder="e.g. Very hungry mid-afternoon. Craved sugar Thursday. Missed gym once."></textarea>
+        </div>
+        <button class="btn-primary" id="checkin-btn" onclick="runCheckin()">Get this week's recommendations →</button>
+      </div>
+
+      <!-- chat input always visible -->
+      <div style="height:24px"></div>
+    </div>
+    <!-- end chat tab -->
+
+    <!-- PROFILE TAB -->
+    <div class="tab-panel" id="tab-profile">
+      <div class="card">
+        <div class="card-label">About you</div>
+        <div class="field-row">
+          <div class="field"><label>Name</label><input type="text" id="p-name" placeholder="Rabia" /></div>
+          <div class="field"><label>Age</label><input type="number" id="p-age" placeholder="32" /></div>
+        </div>
+        <div class="field-row3">
+          <div class="field"><label>Sex</label>
+            <select id="p-sex"><option value="">—</option><option value="female">Female</option><option value="male">Male</option></select>
+          </div>
+          <div class="field"><label>Height (cm)</label><input type="number" id="p-height" placeholder="165" /></div>
+          <div class="field"><label>Start weight (kg)</label><input type="number" id="p-start" step="0.1" placeholder="85" /></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Goal weight (kg)</label><input type="number" id="p-goal" step="0.1" placeholder="70" /></div>
+          <div class="field"><label>Activity level</label>
+            <select id="p-activity">
+              <option value="">—</option>
+              <option value="sedentary (desk job, minimal movement)">Sedentary</option>
+              <option value="lightly active (1–2 exercise sessions/week)">Lightly active</option>
+              <option value="moderately active (3–4 sessions/week)">Moderately active</option>
+              <option value="very active (5+ sessions/week)">Very active</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-label">Diet & health</div>
+        <div class="field"><label>Diet style</label>
+          <select id="p-diet">
+            <option value="no specific preference">No preference</option>
+            <option value="omnivore">Omnivore</option>
+            <option value="vegetarian">Vegetarian</option>
+            <option value="vegan">Vegan</option>
+            <option value="pescatarian">Pescatarian</option>
+            <option value="low-carb / ketogenic">Low-carb / keto</option>
+            <option value="mediterranean">Mediterranean</option>
+          </select>
+        </div>
+        <div class="field"><label>Allergies / foods to avoid</label>
+          <input type="text" id="p-allergies" placeholder="e.g. gluten, dairy, nuts" />
+        </div>
+        <div class="field"><label>Medical conditions relevant to nutrition</label>
+          <input type="text" id="p-conditions" placeholder="e.g. PCOS, insulin resistance, hypothyroidism" />
+        </div>
+        <div class="field"><label>Weekly fat loss target</label>
+          <select id="p-rate">
+            <option value="0.25 kg/week (slow and sustainable)">0.25 kg/week — slow & sustainable</option>
+            <option value="0.5 kg/week (moderate)" selected>0.5 kg/week — moderate</option>
+            <option value="0.75 kg/week (aggressive)">0.75 kg/week — aggressive</option>
+            <option value="1 kg/week (maximum recommended)">1 kg/week — maximum</option>
+          </select>
+        </div>
+        <button class="btn-primary" onclick="saveProfile()">Save profile</button>
+      </div>
+    </div>
+
+    <!-- HISTORY TAB -->
+    <div class="tab-panel" id="tab-history">
+      <div class="card" id="history-summary">
+        <div class="card-label">Progress summary</div>
+        <div class="metrics">
+          <div class="metric"><div class="metric-label">Starting weight</div><div class="metric-val" id="h-start">—</div></div>
+          <div class="metric"><div class="metric-label">Current weight</div><div class="metric-val" id="h-current">—</div></div>
+          <div class="metric"><div class="metric-label">Total lost</div><div class="metric-val" id="h-lost">—</div></div>
+          <div class="metric"><div class="metric-label">Weeks tracked</div><div class="metric-val" id="h-weeks">0</div></div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-meta"><span>Progress to goal</span><span id="h-pct">0%</span></div>
+          <div class="progress-track"><div class="progress-fill" id="h-bar" style="width:0%"></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-label">Weekly log</div>
+        <div id="history-list"><div style="font-size:13px;color:var(--text-3)">No check-ins logged yet.</div></div>
+      </div>
+    </div>
+
+    <!-- SETTINGS TAB -->
+    <div class="tab-panel" id="tab-settings">
+      <div class="setup-hero">
+        <div class="setup-icon">🔑</div>
+        <h2>Anthropic API key</h2>
+        <p>Your key is stored only on this device and never sent anywhere except the Anthropic API directly.</p>
+      </div>
+      <div class="card">
+        <div class="apikey-note">
+          Get a free API key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> → API Keys. You pay only for usage (a full week's conversation costs pennies).
+        </div>
+        <div class="field"><label>API key</label><input type="password" id="api-key-input" placeholder="sk-ant-..." /></div>
+        <button class="btn-primary" onclick="saveApiKey()">Save API key</button>
+        <div class="small-link" style="margin-top:12px"><a href="#" onclick="clearAll()">Clear all data from this device</a></div>
+      </div>
+    </div>
+
+  </main><!-- end main -->
+
+  <!-- chat input bar fixed at bottom (only for chat tab) -->
+  <div class="chat-input-bar" id="chat-bar">
+    <textarea id="chat-input" rows="1" placeholder="Ask a follow-up…" oninput="autoResize(this)" onkeydown="handleKey(event)"></textarea>
+    <button class="send-btn" id="send-btn" onclick="sendChat()" aria-label="Send">
+      <svg width="18" height="18" viewBox="0 0 24 24"><path d="M2 21L23 12 2 3v7l15 2-15 2v7z"/></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+// ── State ────────────────────────────────────────────────
+let profile = JSON.parse(localStorage.getItem('na-profile') || '{}');
+let history = JSON.parse(localStorage.getItem('na-history') || '[]');
+let chatHistory = [];
+let isLoading = false;
+
+// ── Tabs ────────────────────────────────────────────────
+function showTab(id) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  event.currentTarget.classList.add('active');
+  const bar = document.getElementById('chat-bar');
+  bar.style.display = id === 'chat' ? 'flex' : 'none';
+  if (id === 'history') renderHistory();
+  if (id === 'profile') loadProfileFields();
+}
+
+// ── Profile ──────────────────────────────────────────────
+function loadProfileFields() {
+  ['name','age','sex','height','start','goal','activity','diet','allergies','conditions','rate'].forEach(k => {
+    const el = document.getElementById('p-' + k);
+    if (el && profile[k]) el.value = profile[k];
+  });
+}
+
+function saveProfile() {
+  profile = {
+    name: v('p-name'), age: v('p-age'), sex: v('p-sex'),
+    height: v('p-height'), start: v('p-start'), goal: v('p-goal'),
+    activity: v('p-activity'), diet: v('p-diet'),
+    allergies: v('p-allergies'), conditions: v('p-conditions'), rate: v('p-rate')
+  };
+  localStorage.setItem('na-profile', JSON.stringify(profile));
+  updateWeekPill();
+  alert('Profile saved ✓');
+}
+
+function v(id) { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
+
+// ── API Key ──────────────────────────────────────────────
+function saveApiKey() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (!key.startsWith('sk-')) { alert('Please enter a valid Anthropic API key (starts with sk-ant-...)'); return; }
+  localStorage.setItem('na-apikey', key);
+  alert('API key saved ✓ You can now use the agent.');
+}
+
+function getApiKey() { return localStorage.getItem('na-apikey') || ''; }
+
+function clearAll() {
+  if (!confirm('This will delete your profile, history, and API key from this device. Continue?')) return;
+  localStorage.clear();
+  location.reload();
+}
+
+// ── System prompt ────────────────────────────────────────
+function buildSystemPrompt() {
+  const recent = history.slice(-6).map((h, i) =>
+    `Week ${i + 1}: weight ${h.weight}kg | ${h.cals || '?'} kcal/day | ${h.protein || '?'}g protein | ${h.ex || '?'} sessions | adherence: ${h.adherence || '?'}${h.notes ? ' | notes: ' + h.notes : ''}`
+  ).join('\n');
+
+  return `You are a personal nutritionist AI specialising in evidence-based fat loss. You provide highly personalised, actionable recommendations grounded strictly in peer-reviewed research.
+
+CLIENT PROFILE:
+- Name: ${profile.name || 'Client'}
+- Age: ${profile.age || '?'} | Sex: ${profile.sex || '?'} | Height: ${profile.height || '?'}cm
+- Starting weight: ${profile.start || '?'}kg → Goal: ${profile.goal || '?'}kg
+- Activity level: ${profile.activity || 'unknown'}
+- Diet: ${profile.diet || 'no preference'}
+- Allergies/avoid: ${profile.allergies || 'none stated'}
+- Medical conditions: ${profile.conditions || 'none stated'}
+- Fat loss target: ${profile.rate || '0.5 kg/week'}
+- Weeks tracked: ${history.length}
+
+RECENT WEEKLY DATA (oldest → newest):
+${recent || 'No prior check-ins yet — this is their first week.'}
+
+INSTRUCTIONS:
+1. Always ground recommendations in peer-reviewed nutrition science. Name mechanisms and cite authors/year where possible (e.g. "protein's satiety effect via PYY and GLP-1 upregulation — Leidy et al., 2015").
+2. Analyse multi-week trends when available. If progress is stalling, identify the likely cause and adjust the strategy.
+3. For each weekly check-in, provide:
+   • Calculated TDEE and recommended daily calorie target with explicit deficit
+   • Daily protein target (g) with rationale based on lean mass and research
+   • 3 specific, actionable nutrition adjustments for the coming week
+   • One targeted strategy addressing the client's biggest flagged challenge
+4. Use a warm but direct clinical tone. Never give generic advice.
+5. If the client has medical conditions, flag when they should verify with their GP or a registered dietitian.
+6. Only recommend supplements with strong peer-reviewed evidence and specific relevance to this client.
+7. Keep responses well-structured but conversational — use plain language, not jargon.`;
+}
+
+// ── Check-in ─────────────────────────────────────────────
+async function runCheckin() {
+  const weight = document.getElementById('ci-weight').value;
+  if (!weight) { alert('Please enter your current weight.'); return; }
+  if (!getApiKey()) { alert('Please add your Anthropic API key in the Settings tab first.'); showTab('settings'); return; }
+
+  const entry = {
+    weight, cals: v('ci-cals'), protein: v('ci-protein'),
+    ex: v('ci-ex'), adherence: v('ci-adherence'),
+    notes: v('ci-notes'), date: new Date().toLocaleDateString('en-AU', {day:'numeric',month:'short',year:'numeric'})
+  };
+  history.push(entry);
+  localStorage.setItem('na-history', JSON.stringify(history));
+  updateWeekPill();
+
+  const msg = `Weekly check-in — Week ${history.length}:
+• Weight: ${weight}kg
+• Avg daily calories: ${entry.cals || 'not tracked'} kcal
+• Avg daily protein: ${entry.protein || 'not tracked'}g
+• Exercise sessions this week: ${entry.ex || '?'}
+• Plan adherence: ${entry.adherence || 'not specified'}
+• Notes: ${entry.notes || 'nothing to flag'}
+
+Please give me my personalised fat loss recommendations for this coming week.`;
+
+  // collapse checkin card
+  document.getElementById('checkin-card').style.display = 'none';
+
+  appendUserMsg(msg);
+  chatHistory.push({ role: 'user', content: msg });
+  await callAPI();
+}
+
+// ── Free chat ────────────────────────────────────────────
+async function sendChat() {
+  const ta = document.getElementById('chat-input');
+  const msg = ta.value.trim();
+  if (!msg || isLoading) return;
+  if (!getApiKey()) { alert('Please add your Anthropic API key in Settings first.'); return; }
+  ta.value = ''; ta.style.height = 'auto';
+  appendUserMsg(msg);
+  chatHistory.push({ role: 'user', content: msg });
+  await callAPI();
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+// ── API call ─────────────────────────────────────────────
+async function callAPI() {
+  isLoading = true;
+  document.getElementById('send-btn').disabled = true;
+  document.getElementById('checkin-btn') && (document.getElementById('checkin-btn').disabled = true);
+
+  const typingEl = appendTyping();
+  const box = document.getElementById('chat-messages');
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': getApiKey(),
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        system: buildSystemPrompt(),
+        messages: chatHistory,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }]
+      })
+    });
+
+    const data = await res.json();
+    typingEl.remove();
+
+    if (data.error) {
+      appendAgentMsg('Error: ' + data.error.message, false);
+    } else {
+      const text = (data.content || []).map(b => b.type === 'text' ? b.text : '').filter(Boolean).join('\n').trim();
+      const usedSearch = (data.content || []).some(b => b.type === 'tool_use' && b.name === 'web_search');
+      appendAgentMsg(text, usedSearch);
+      chatHistory.push({ role: 'assistant', content: text });
+    }
+  } catch(e) {
+    typingEl.remove();
+    appendAgentMsg('Could not reach the Anthropic API. Check your internet connection and API key in Settings.', false);
+  }
+
+  isLoading = false;
+  document.getElementById('send-btn').disabled = false;
+}
+
+// ── DOM helpers ──────────────────────────────────────────
+function appendUserMsg(text) {
+  const box = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'msg-user';
+  div.textContent = text;
+  box.appendChild(div);
+  scrollChat();
+}
+
+function appendAgentMsg(text, cited) {
+  const box = document.getElementById('chat-messages');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg-agent';
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-agent-bubble';
+  bubble.textContent = text;
+  wrap.appendChild(bubble);
+  if (cited) {
+    const src = document.createElement('div');
+    src.className = 'msg-source';
+    src.textContent = '↳ Referenced peer-reviewed literature via search';
+    wrap.appendChild(src);
+  }
+  box.appendChild(wrap);
+  scrollChat();
+}
+
+function appendTyping() {
+  const box = document.getElementById('chat-messages');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg-agent';
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-agent-bubble';
+  bubble.innerHTML = '<div class="typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
+  wrap.appendChild(bubble);
+  box.appendChild(wrap);
+  scrollChat();
+  return wrap;
+}
+
+function scrollChat() {
+  setTimeout(() => {
+    const box = document.getElementById('chat-messages');
+    box.scrollTop = box.scrollHeight;
+    window.scrollTo(0, document.body.scrollHeight);
+  }, 50);
+}
+
+// ── History rendering ─────────────────────────────────────
+function renderHistory() {
+  const sw = parseFloat(profile.start) || 0;
+  const cw = history.length ? parseFloat(history[history.length-1].weight) : sw;
+  const gw = parseFloat(profile.goal) || 0;
+  const lost = sw && cw ? (sw - cw).toFixed(1) : '—';
+  const goalLoss = sw && gw ? sw - gw : 0;
+  const pct = goalLoss > 0 && lost !== '—' ? Math.min(100, Math.round((parseFloat(lost) / goalLoss) * 100)) : 0;
+
+  document.getElementById('h-start').innerHTML = sw ? sw + '<small>kg</small>' : '—';
+  document.getElementById('h-current').innerHTML = cw ? cw + '<small>kg</small>' : '—';
+  document.getElementById('h-lost').innerHTML = lost !== '—' ? lost + '<small>kg</small>' : '—';
+  document.getElementById('h-weeks').textContent = history.length;
+  document.getElementById('h-pct').textContent = pct + '%';
+  document.getElementById('h-bar').style.width = pct + '%';
+
+  const list = document.getElementById('history-list');
+  if (!history.length) { list.innerHTML = '<div style="font-size:13px;color:var(--text-3)">No check-ins logged yet.</div>'; return; }
+  list.innerHTML = history.slice().reverse().map((h, i) => `
+    <div class="history-entry">
+      <div class="history-week">Week ${history.length - i} · ${h.date}</div>
+      <div class="history-stats">
+        ${h.weight}kg · ${h.cals || '?'} kcal · ${h.protein || '?'}g protein · ${h.ex || '?'} sessions
+        <br><span style="color:var(--text-3)">${h.adherence || ''}</span>
+        ${h.notes ? '<br>' + h.notes : ''}
+      </div>
+    </div>`).join('');
+}
+
+// ── Week pill ──────────────────────────────────────────────
+function updateWeekPill() {
+  document.getElementById('week-pill').textContent = 'Week ' + (history.length + 1);
+}
+
+// ── Init ───────────────────────────────────────────────────
+(function init() {
+  loadProfileFields();
+  updateWeekPill();
+  const keyInput = document.getElementById('api-key-input');
+  if (getApiKey()) keyInput.value = getApiKey();
+  // load checkin fields from last entry for prefill context
+})();
+</script>
+</body>
+</html>
