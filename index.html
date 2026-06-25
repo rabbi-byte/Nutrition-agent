@@ -347,7 +347,7 @@ function v(id) { const el = document.getElementById(id); return el ? el.value.tr
 // ── API Key ───────────────────────────────────────────────
 function saveApiKey() {
   const key = document.getElementById('api-key-input').value.trim();
-  if (!key.startsWith('AIza')) { alert('Please enter a valid Gemini API key (starts with AIza...)'); return; }
+  if (!key || key.length < 10) { alert('Please enter a valid Gemini API key'); return; }
   localStorage.setItem('na-apikey', key);
   alert('API key saved ✓ You\'re ready to go!');
 }
