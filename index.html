@@ -476,10 +476,11 @@ async function callGemini() {
 
     const data = await res.json();
     typingEl.remove();
+    console.log('Gemini response:', JSON.stringify(data));
 
     if (data.error) {
       const msg = data.error.message || 'Unknown error from Gemini API.';
-      appendAgentMsg('Error: ' + msg);
+      appendAgentMsg('Gemini error: ' + msg + '\n\nStatus: ' + res.status);
     } else {
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response received. Please try again.';
       appendAgentMsg(text);
@@ -487,7 +488,7 @@ async function callGemini() {
     }
   } catch (e) {
     typingEl.remove();
-    appendAgentMsg('Could not reach the Gemini API. Check your internet connection and API key in Settings.');
+    appendAgentMsg('Connection error: ' + e.message + '\n\nThings to check:\n1. Your API key is correct in Settings\n2. You have internet connection\n3. Go to aistudio.google.com and confirm your key is active');
   }
 
   isLoading = false;
